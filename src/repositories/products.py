@@ -5,7 +5,7 @@ from src.db.models import ProductModel
 from src.schemas.products import ProductCreateSchema, ProductUpdateSchema
 
 
-class ProductsRepository:
+class ProductRepository:
     """CRUD операции над товарами"""
 
     async def create(

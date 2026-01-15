@@ -5,7 +5,7 @@ from src.db.models import AttributeModel
 from src.schemas.attributes import AttributeCreateSchema, AttributeUpdateSchema
 
 
-class AttributesRepository:
+class AttributeRepository:
     """CRUD операции над атрибутами товаров"""
 
     async def create(
@@ -23,6 +23,13 @@ class AttributesRepository:
     ) -> AttributeModel | None:
         """Получить атрибут по его ID"""
         query = select(AttributeModel).where(AttributeModel.id == attribute_id)
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    async def get_by_title(
+        self, session: AsyncSession, attribute_title: str
+    ) -> AttributeModel | None:
+        query = select(AttributeModel).where(AttributeModel.title == attribute_title)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 

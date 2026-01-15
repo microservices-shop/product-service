@@ -6,7 +6,7 @@ from src.db.models import CategoryModel
 from src.schemas.categories import CategoryCreateSchema, CategoryUpdateSchema
 
 
-class CategoriesRepository:
+class CategoryRepository:
     """CRUD операции над категориями товаров"""
 
     async def create(
