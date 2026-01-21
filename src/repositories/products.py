@@ -1,5 +1,6 @@
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from src.db.models import ProductModel
 from src.schemas.products import ProductCreateSchema, ProductUpdateSchema
@@ -19,10 +20,14 @@ class ProductRepository:
         return product
 
     async def get_by_id(
-        self, session: AsyncSession, product_id: int
+        self, session: AsyncSession, product_id: int, with_category: bool = True
     ) -> ProductModel | None:
-        """Получить товар по его ID"""
+        """Получить товар по ID."""
         query = select(ProductModel).where(ProductModel.id == product_id)
+
+        if with_category:
+            query = query.options(selectinload(ProductModel.category))
+
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
@@ -42,11 +47,39 @@ class ProductRepository:
         result = await session.execute(query)
         return list(result.scalars().all())
 
-    async def get_all(self, session: AsyncSession) -> list[ProductModel]:
+    async def get_all(
+        self, session: AsyncSession, limit: int = 20, offset: int = 0
+    ) -> list[ProductModel]:
         """Получить список всех товаров"""
-        query = select(ProductModel).order_by(ProductModel.id)
+        query = (
+            select(ProductModel).order_by(ProductModel.id).limit(limit).offset(offset)
+        )
+
         result = await session.execute(query)
         return list(result.scalars().all())
+
+    async def get_active(
+        self, session: AsyncSession, limit: int = 20, offset: int = 0
+    ) -> list[ProductModel]:
+        """Получить список всех активных товаров"""
+        query = (
+            select(ProductModel)
+            .where(ProductModel.status == "active")
+            .order_by(ProductModel.id)
+            .limit(limit)
+            .offset(offset)
+        )
+
+        result = await session.execute(query)
+        return list(result.scalars().all())
+
+    async def count_all(self, session: AsyncSession) -> int:
+        """Подсчитать общее количество активных товаров."""
+        query = select(func.count(ProductModel.id)).where(
+            ProductModel.status == "active"
+        )
+        result = await session.execute(query)
+        return result.scalar_one()
 
     async def update(
         self,
