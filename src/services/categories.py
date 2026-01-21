@@ -34,6 +34,7 @@ class CategoryService:
 
         category = await self.repo.create(self.session, data)
         await self.session.commit()
+        await self.session.refresh(category)
         return category
 
     async def get_by_id(self, category_id: int) -> CategoryModel:
@@ -100,6 +101,7 @@ class CategoryService:
 
         updated = await self.repo.update(self.session, category, data)
         await self.session.commit()
+        await self.session.refresh(updated)
 
         return updated
 

@@ -1,4 +1,5 @@
 from fastapi import status, HTTPException
+from sqlalchemy.exc import IntegrityError
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,9 +33,27 @@ class AttributeService:
                 detail=f"Атрибут '{data.title}' уже существует",
             )
 
-        attribute = await self.repo.create(self.session, data)
-        await self.session.commit()
-        return attribute
+        try:
+            attribute = await self.repo.create(self.session, data)
+            await self.session.commit()
+
+            # Перезагружаем объект
+            await self.session.refresh(attribute)
+
+            return attribute
+        except IntegrityError as e:
+            await self.session.rollback()
+
+            if "attribute_definitions_category_id_fkey" in str(e):
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail=f"Категория с ID {data.category_id} не найдена",
+                )
+
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ошибка целостности данных",
+            )
 
     async def get_by_id(self, attribute_id: int) -> AttributeModel:
         """
@@ -104,6 +123,7 @@ class AttributeService:
 
         updated = await self.repo.update(self.session, attribute, data)
         await self.session.commit()
+        await self.session.refresh(updated)
 
         return updated
 
