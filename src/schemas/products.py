@@ -2,6 +2,8 @@ from datetime import datetime
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from src.db.enums import ProductStatus
+from src.schemas.categories import CategoryResponseSchema
+from src.schemas.common import PaginatedResponse
 
 
 class ProductCreateSchema(BaseModel):
@@ -92,3 +94,19 @@ class ProductResponseSchema(BaseModel):
     attributes: dict = Field(..., description="Динамические атрибуты товара")
     created_at: datetime = Field(..., description="Дата и время создания")
     updated_at: datetime = Field(..., description="Дата и время последнего обновления")
+
+
+class ProductDetailResponseSchema(ProductResponseSchema):
+    """Схема детальной информации о товаре."""
+
+    description: str | None = Field(None, description="Описание товара")
+    attributes: dict = Field(..., description="Атрибуты товара")
+    created_at: datetime = Field(..., description="Дата создания")
+    updated_at: datetime = Field(..., description="Дата обновления")
+    category: CategoryResponseSchema = Field(..., description="Категория товара")
+
+
+class ProductListResponse(PaginatedResponse):
+    """Ответ со списком товаров."""
+
+    items: list[ProductResponseSchema] = Field(..., description="Список товаров")
