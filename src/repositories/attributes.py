@@ -8,8 +8,9 @@ from src.schemas.attributes import AttributeCreateSchema, AttributeUpdateSchema
 class AttributeRepository:
     """CRUD операции над атрибутами товаров"""
 
+    @staticmethod
     async def create(
-        self, session: AsyncSession, attribute_data: AttributeCreateSchema
+        session: AsyncSession, attribute_data: AttributeCreateSchema
     ) -> AttributeModel:
         """Создать атрибут"""
         fields = attribute_data.model_dump()
@@ -18,37 +19,53 @@ class AttributeRepository:
         await session.flush()
         return attribute
 
+    @staticmethod
     async def get_by_id(
-        self, session: AsyncSession, attribute_id: int
+        session: AsyncSession, attribute_id: int
     ) -> AttributeModel | None:
         """Получить атрибут по его ID"""
         query = select(AttributeModel).where(AttributeModel.id == attribute_id)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
+    @staticmethod
     async def get_by_title(
-        self, session: AsyncSession, attribute_title: str
+        session: AsyncSession, attribute_title: str
     ) -> AttributeModel | None:
         query = select(AttributeModel).where(AttributeModel.title == attribute_title)
         result = await session.execute(query)
         return result.scalar_one_or_none()
 
+    @staticmethod
+    async def get_by_title_in_category(
+        session: AsyncSession, category_id: int, attribute_title: str
+    ) -> AttributeModel | None:
+        """Получить атрибут по названию в рамках конкретной категории"""
+        query = select(AttributeModel).where(
+            AttributeModel.category_id == category_id,
+            AttributeModel.title == attribute_title,
+        )
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_all_from_category(
-        self, session: AsyncSession, category_id: int
+        session: AsyncSession, category_id: int
     ) -> list[AttributeModel]:
         """Получить список всех атрибутов конкретной категории"""
         query = select(AttributeModel).where(AttributeModel.category_id == category_id)
         result = await session.execute(query)
         return list(result.scalars().all())
 
-    async def get_all(self, session: AsyncSession) -> list[AttributeModel]:
+    @staticmethod
+    async def get_all(session: AsyncSession) -> list[AttributeModel]:
         """Получить список всех атрибутов"""
         query = select(AttributeModel).order_by(AttributeModel.id)
         result = await session.execute(query)
         return list(result.scalars().all())
 
+    @staticmethod
     async def update(
-        self,
         session: AsyncSession,
         attribute: AttributeModel,
         attribute_data: AttributeUpdateSchema,
@@ -60,7 +77,8 @@ class AttributeRepository:
         await session.flush()
         return attribute
 
-    async def delete(self, session: AsyncSession, attribute: AttributeModel) -> None:
+    @staticmethod
+    async def delete(session: AsyncSession, attribute: AttributeModel) -> None:
         """Удаление атрибута"""
         await session.delete(attribute)
         await session.flush()
