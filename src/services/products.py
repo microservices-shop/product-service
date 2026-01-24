@@ -1,16 +1,16 @@
 import math
-
-from fastapi import status, HTTPException
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from src.db.models import ProductModel
-from src.repositories.categories import CategoryRepository
-from src.repositories.products import ProductRepository
-from src.schemas.common import PaginationParams
 from sqlalchemy.exc import IntegrityError
 
-
+from src.db.models import ProductModel
+from src.db.enums import AttributeType
+from src.exceptions import NotFoundException, BadRequestException, ValidationException
+from src.repositories.categories import CategoryRepository
+from src.repositories.products import ProductRepository
+from src.repositories.attributes import AttributeRepository
+from src.schemas.common import PaginationParams
 from src.schemas.products import (
     ProductCreateSchema,
     ProductUpdateSchema,
@@ -21,57 +21,111 @@ from src.schemas.products import (
 class ProductService:
     def __init__(self, session: AsyncSession):
         self.session = session
-        self.repo = ProductRepository()
-        self.category_repo = CategoryRepository()
 
-    def _normalize_title(self, title: str) -> str:
-        return title.strip().capitalize()
+    async def _validate_product_attributes(
+        self, category_id: int, attributes: dict[str, Any]
+    ) -> None:
+        """
+        Валидация атрибутов товара на соответствие определениям категории.
+
+        :raises ValidationException: Если атрибуты не соответствуют определениям
+        """
+        # Получаем определения атрибутов для категории
+        attribute_definitions = await AttributeRepository.get_all_from_category(
+            self.session, category_id
+        )
+
+        errors = []
+
+        # Создаём словарь определений для быстрого доступа
+        definitions_map = {attr.title.lower(): attr for attr in attribute_definitions}
+
+        # Проверяем обязательные атрибуты
+        for attr_def in attribute_definitions:
+            if attr_def.required:
+                # Ищем атрибут без учёта регистра
+                found = any(
+                    key.lower() == attr_def.title.lower() for key in attributes.keys()
+                )
+                if not found:
+                    errors.append(
+                        {
+                            "field": attr_def.title,
+                            "message": f"Обязательный атрибут '{attr_def.title}' не указан",
+                        }
+                    )
+
+        # Валидация типов атрибутов
+        for attr_name, attr_value in attributes.items():
+            attr_def = definitions_map.get(attr_name.lower())
+
+            if attr_def:
+                type_error = self._validate_attribute_type(
+                    attr_name, attr_value, attr_def.type
+                )
+                if type_error:
+                    errors.append(type_error)
+
+        if errors:
+            raise ValidationException(
+                message="Ошибки валидации атрибутов товара",
+                errors=errors,
+            )
+
+    def _validate_attribute_type(
+        self, name: str, value: Any, expected_type: AttributeType
+    ) -> dict | None:
+        """Проверка соответствия типа атрибута."""
+        type_checks = {
+            AttributeType.STRING: lambda v: isinstance(v, str),
+            AttributeType.NUMBER: lambda v: isinstance(v, (int, float)),
+            AttributeType.BOOLEAN: lambda v: isinstance(v, bool),
+            AttributeType.ARRAY: lambda v: isinstance(v, list),
+            AttributeType.ENUM: lambda v: isinstance(v, str),  # enum как строка
+        }
+
+        check_fn = type_checks.get(expected_type)
+        if check_fn and not check_fn(value):
+            return {
+                "field": name,
+                "message": f"Атрибут '{name}' должен быть типа {expected_type.value}",
+            }
+        return None
 
     async def create(self, data: ProductCreateSchema) -> ProductModel:
         """Создать новый товар."""
-        category = await self.category_repo.get_by_id(self.session, data.category_id)
+        category = await CategoryRepository.get_by_id(self.session, data.category_id)
 
         if not category:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Категория с ID {data.category_id} не найдена",
-            )
+            raise NotFoundException(f"Категория с ID {data.category_id} не найдена")
+
+        # Валидация атрибутов
+        if data.attributes:
+            await self._validate_product_attributes(data.category_id, data.attributes)
 
         try:
-            product = await self.repo.create(self.session, data)
+            product = await ProductRepository.create(self.session, data)
             await self.session.commit()
-
             await self.session.refresh(product, ["category"])
-
             return product
         except IntegrityError as e:
             await self.session.rollback()
 
             if "products_category_id_fkey" in str(e):
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Категория с ID {data.category_id} не найдена",
-                )
+                raise NotFoundException(f"Категория с ID {data.category_id} не найдена")
 
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ошибка целостности данных",
-            )
+            raise BadRequestException("Ошибка целостности данных")
 
     async def get_by_id(self, product_id: int) -> ProductModel:
         """
         Получить товар по ID
 
-        :raises HTTPException 404: Если атрибут не найден
+        :raises NotFoundException: Если товар не найден
         """
-
-        product = await self.repo.get_by_id(self.session, product_id)
+        product = await ProductRepository.get_by_id(self.session, product_id)
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Товар с ID '{product_id}' не найден",
-            )
+            raise NotFoundException(f"Товар с ID '{product_id}' не найден")
 
         return product
 
@@ -79,32 +133,27 @@ class ProductService:
         """
         Получить товар по названию
 
-        :raises HTTPException 404: Если товар не найден
+        :raises NotFoundException: Если товар не найден
         """
-
-        normalized_title = self._normalize_title(product)
-        product = await self.repo.get_by_title(self.session, normalized_title)
+        product = await ProductRepository.get_by_title(self.session, product)
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Товар с названием '{normalized_title}' не найден",
-            )
+            raise NotFoundException(f"Товар с названием '{product}' не найден")
 
         return product
 
     async def get_all_from_category(self, category_id: int) -> list[ProductModel]:
         """Получить список всех товаров из конкретной категории"""
-        return await self.repo.get_all_from_category(self.session, category_id)
+        return await ProductRepository.get_all_from_category(self.session, category_id)
 
     async def get_all(self, pagination: PaginationParams) -> ProductListResponse:
         """Получить список всех товаров с пагинацией."""
-        total = await self.repo.count_all(self.session)
+        total = await ProductRepository.count_all(self.session)
 
         # Вычисляем offset
         offset = (pagination.page - 1) * pagination.page_size
 
-        products = await self.repo.get_all(
+        products = await ProductRepository.get_all(
             self.session, limit=pagination.page_size, offset=offset
         )
 
@@ -121,14 +170,10 @@ class ProductService:
 
     async def get_active(self, pagination: PaginationParams) -> ProductListResponse:
         """Получить список всех активных товаров с пагинацией."""
-        # Подсчитываем общее количество
-        total = await self.repo.count_all(self.session)
-
-        # Вычисляем offset
+        total = await ProductRepository.count_active(self.session)
         offset = (pagination.page - 1) * pagination.page_size
 
-        # Получаем товары
-        products = await self.repo.get_active(
+        products = await ProductRepository.get_active(
             self.session, limit=pagination.page_size, offset=offset
         )
 
@@ -145,29 +190,29 @@ class ProductService:
 
     async def update(self, product_id: int, data: ProductUpdateSchema) -> ProductModel:
         """Обновить товар."""
-        product = await self.repo.get_by_id(
+        product = await ProductRepository.get_by_id(
             self.session, product_id, with_category=False
         )
 
         if not product:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Товар с ID {product_id} не найден",
-            )
+            raise NotFoundException(f"Товар с ID {product_id} не найден")
+
+        # Определяем category_id для валидации атрибутов
+        target_category_id = data.category_id or product.category_id
 
         # Если меняется категория, проверяем её существование
         if data.category_id and data.category_id != product.category_id:
-            category = await self.category_repo.get_by_id(
+            category = await CategoryRepository.get_by_id(
                 self.session, data.category_id
             )
 
             if not category:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail=f"Категория с ID {data.category_id} не найдена",
-                )
+                raise NotFoundException(f"Категория с ID {data.category_id} не найдена")
 
-        updated = await self.repo.update(self.session, product, data)
+        if data.attributes:
+            await self._validate_product_attributes(target_category_id, data.attributes)
+
+        updated = await ProductRepository.update(self.session, product, data)
         await self.session.commit()
         await self.session.refresh(updated)
 
@@ -180,8 +225,7 @@ class ProductService:
         Правила:
         - Товар должен существовать
         """
-
         product = await self.get_by_id(product_id)
 
-        await self.repo.delete(self.session, product)
+        await ProductRepository.delete(self.session, product)
         await self.session.commit()
