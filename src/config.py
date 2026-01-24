@@ -38,5 +38,20 @@ class Settings(BaseSettings):
         )
         return url
 
+    LOG_LEVEL: str = "INFO"
+    LOG_FILE: str | None = None
+    LOG_ROTATION: str = "10 MB"
+    LOG_RETENTION: str = "7 days"
+
+    # Environment
+    ENVIRONMENT: str = "development"
+
+    # CORS
+    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
+
+    # Pagination
+    DEFAULT_PAGE_SIZE: int = 20
+    MAX_PAGE_SIZE: int = 100
+
 
 settings = Settings()
