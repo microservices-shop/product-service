@@ -1,9 +1,12 @@
 from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 from src.db.enums import ProductStatus
 from src.schemas.categories import CategoryResponseSchema
 from src.schemas.common import PaginatedResponse
+from src.utils import normalize_title
 
 
 class ProductCreateSchema(BaseModel):
@@ -24,7 +27,7 @@ class ProductCreateSchema(BaseModel):
         description="Статус товара",
         example=ProductStatus.ACTIVE.value,
     )
-    attributes: dict = Field(
+    attributes: dict[str, Any] = Field(
         default_factory=dict,
         description="Динамические атрибуты товара в формате JSONB",
         example={"color": "Титановый", "memory": "256GB"},
@@ -32,12 +35,9 @@ class ProductCreateSchema(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def normalize_title(cls, v: str) -> str:
+    def validate_and_normalize_title(cls, v: str) -> str:
         """Нормализует название: удаляет лишние пробелы и капитализирует первую букву."""
-        v = v.strip()
-        if not v:
-            raise ValueError("Название товара не может быть пустым")
-        return v.capitalize()
+        return normalize_title(v)
 
 
 class ProductUpdateSchema(BaseModel):
@@ -58,7 +58,7 @@ class ProductUpdateSchema(BaseModel):
     status: ProductStatus | None = Field(
         None, description="Статус товара", example=ProductStatus.ACTIVE.value
     )
-    attributes: dict | None = Field(
+    attributes: dict[str, Any] | None = Field(
         None,
         description="Динамические атрибуты товара в формате JSONB",
         example={"color": "Титановый", "memory": "256GB"},
@@ -66,16 +66,11 @@ class ProductUpdateSchema(BaseModel):
 
     @field_validator("title")
     @classmethod
-    def normalize_title(cls, v: str | None) -> str | None:
+    def validate_and_normalize_title(cls, v: str | None) -> str | None:
         """Нормализует название: удаляет лишние пробелы и капитализирует первую букву."""
         if v is None:
             return None
-
-        v = v.strip()
-        if not v:
-            raise ValueError("Название товара не может быть пустым")
-
-        return v.capitalize()
+        return normalize_title(v)
 
 
 class ProductResponseSchema(BaseModel):
@@ -91,7 +86,7 @@ class ProductResponseSchema(BaseModel):
     status: ProductStatus = Field(
         ..., description="Статус товара", example=ProductStatus.ACTIVE.value
     )
-    attributes: dict = Field(..., description="Динамические атрибуты товара")
+    attributes: dict[str, Any] = Field(..., description="Динамические атрибуты товара")
     created_at: datetime = Field(..., description="Дата и время создания")
     updated_at: datetime = Field(..., description="Дата и время последнего обновления")
 
@@ -99,10 +94,6 @@ class ProductResponseSchema(BaseModel):
 class ProductDetailResponseSchema(ProductResponseSchema):
     """Схема детальной информации о товаре."""
 
-    description: str | None = Field(None, description="Описание товара")
-    attributes: dict = Field(..., description="Атрибуты товара")
-    created_at: datetime = Field(..., description="Дата создания")
-    updated_at: datetime = Field(..., description="Дата обновления")
     category: CategoryResponseSchema = Field(..., description="Категория товара")
 
 

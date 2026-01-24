@@ -1,12 +1,17 @@
 from pydantic import BaseModel, Field
 
+from src.config import settings
+
 
 class PaginationParams(BaseModel):
     """Параметры пагинации."""
 
     page: int = Field(default=1, ge=1, description="Номер страницы")
     page_size: int = Field(
-        default=9, ge=1, le=100, description="Количество элементов на странице"
+        default=settings.DEFAULT_PAGE_SIZE,
+        ge=1,
+        le=settings.MAX_PAGE_SIZE,
+        description="Количество элементов на странице",
     )
 
 
