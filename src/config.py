@@ -47,7 +47,11 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:8080"]
+    CORS_ORIGINS: list[str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:8080",
+    ]
 
     # Pagination
     DEFAULT_PAGE_SIZE: int = 20
