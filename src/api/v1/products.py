@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter, Query, status
 
 from src.api.dependencies import ProductServiceDep
@@ -29,12 +31,20 @@ async def get_products(
         le=settings.MAX_PAGE_SIZE,
         description="Количество товаров на странице",
     ),
+    sort_by: Literal["price", "id", "title", "created_at"] = Query(
+        default="id",
+        description="Поле для сортировки",
+    ),
+    sort_order: Literal["asc", "desc"] = Query(
+        default="asc",
+        description="Порядок сортировки (asc - по возрастанию, desc - по убыванию)",
+    ),
 ) -> ProductListResponse:
     """
-    Получить список товаров с пагинацией
+    Получить список товаров с пагинацией и сортировкой
     """
     pagination = PaginationParams(page=page, page_size=page_size)
-    return await service.get_all(pagination)
+    return await service.get_all(pagination, sort_by=sort_by, sort_order=sort_order)
 
 
 @router.get(

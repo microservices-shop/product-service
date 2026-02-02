@@ -1,4 +1,4 @@
-from sqlalchemy import select, func
+from sqlalchemy import select, func, asc, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -54,11 +54,22 @@ class ProductRepository:
 
     @staticmethod
     async def get_all(
-        session: AsyncSession, limit: int = 20, offset: int = 0
+        session: AsyncSession,
+        limit: int = 20,
+        offset: int = 0,
+        sort_by: str = "id",
+        sort_order: str = "asc",
     ) -> list[ProductModel]:
-        """Получить список всех товаров"""
+        """Получить список всех товаров с сортировкой"""
+        # Определяем колонку для сортировки
+        sort_column = getattr(ProductModel, sort_by, ProductModel.id)
+        order_func = desc if sort_order == "desc" else asc
+
         query = (
-            select(ProductModel).order_by(ProductModel.id).limit(limit).offset(offset)
+            select(ProductModel)
+            .order_by(order_func(sort_column))
+            .limit(limit)
+            .offset(offset)
         )
 
         result = await session.execute(query)

@@ -1,7 +1,7 @@
 from datetime import datetime
 
 
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.dialects.postgresql import JSONB, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.db.database import Base
 from src.db.enums import AttributeType, ProductStatus
@@ -14,6 +14,7 @@ from sqlalchemy import (
     DateTime,
     Text,
     ForeignKey,
+    Float,
     func,
     UniqueConstraint,
     Index,
@@ -31,6 +32,9 @@ class ProductModel(Base):
         price: int - цена в копейках (неотрицательное значение)
         category_id: int - внешний ключ на категорию товаров
         description: str - описание товара (опционально)
+        images: list[str] - список URL изображений товара
+        stock: int - количество товара в наличии
+        rating: float - рейтинг товара (0-5)
         status: ProductStatus - статус товара (active/archived), по умолчанию active
         attributes: dict - динамические атрибуты товара в формате JSONB
         created_at: datetime - дата и время создания записи
@@ -60,6 +64,24 @@ class ProductModel(Base):
         doc="FK: категория товаров",
     )
     description: Mapped[str] = mapped_column(Text, nullable=True, doc="Описание товара")
+    images: Mapped[list[str]] = mapped_column(
+        ARRAY(String),
+        nullable=False,
+        server_default=text("'{}'"),
+        doc="Список URL изображений товара",
+    )
+    stock: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        server_default=text("0"),
+        doc="Количество товара в наличии",
+    )
+    rating: Mapped[float] = mapped_column(
+        Float,
+        nullable=False,
+        server_default=text("0.0"),
+        doc="Рейтинг товара (0-5)",
+    )
     status: Mapped[ProductStatus] = mapped_column(
         SAEnum(ProductStatus, name="product_status"),
         nullable=False,

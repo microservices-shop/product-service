@@ -22,6 +22,24 @@ class ProductCreateSchema(BaseModel):
         description="Описание товара",
         example="Новый смартфон от Apple с титановым корпусом",
     )
+    images: list[str] = Field(
+        default_factory=list,
+        description="Список URL изображений товара",
+        example=["https://example.com/image1.jpg"],
+    )
+    stock: int = Field(
+        default=0,
+        ge=0,
+        description="Количество товара в наличии",
+        example=100,
+    )
+    rating: float = Field(
+        default=0.0,
+        ge=0.0,
+        le=5.0,
+        description="Рейтинг товара (0-5)",
+        example=4.5,
+    )
     status: ProductStatus = Field(
         default=ProductStatus.ACTIVE,
         description="Статус товара",
@@ -55,6 +73,21 @@ class ProductUpdateSchema(BaseModel):
         description="Описание товара",
         example="Новый смартфон от Apple с титановым корпусом",
     )
+    images: list[str] | None = Field(
+        None,
+        description="Список URL изображений товара",
+    )
+    stock: int | None = Field(
+        None,
+        ge=0,
+        description="Количество товара в наличии",
+    )
+    rating: float | None = Field(
+        None,
+        ge=0.0,
+        le=5.0,
+        description="Рейтинг товара (0-5)",
+    )
     status: ProductStatus | None = Field(
         None, description="Статус товара", example=ProductStatus.ACTIVE.value
     )
@@ -83,6 +116,11 @@ class ProductResponseSchema(BaseModel):
     price: int = Field(..., description="Цена в копейках", example=99990)
     category_id: int = Field(..., description="ID категории", example=1)
     description: str | None = Field(None, description="Описание товара")
+    images: list[str] = Field(
+        default_factory=list, description="Список URL изображений товара"
+    )
+    stock: int = Field(..., description="Количество товара в наличии", example=100)
+    rating: float = Field(..., description="Рейтинг товара (0-5)", example=4.5)
     status: ProductStatus = Field(
         ..., description="Статус товара", example=ProductStatus.ACTIVE.value
     )
