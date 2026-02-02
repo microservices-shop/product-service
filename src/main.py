@@ -5,6 +5,8 @@ from fastapi.responses import JSONResponse
 
 from src.api.v1.router import api_router
 from src.config import settings
+from src.db.database import engine
+from src.admin import setup_admin
 from src.exceptions import (
     NotFoundException,
     BadRequestException,
@@ -86,6 +88,9 @@ def create_app() -> FastAPI:
 
     # Подключение роутеров
     app.include_router(api_router)
+
+    # Подключение админ-панели SQLAdmin
+    setup_admin(app, engine)
 
     return app
 

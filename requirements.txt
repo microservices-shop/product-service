@@ -6,3 +6,4 @@ loguru==0.7.3
 alembic==1.18.0
 asyncpg==0.31.0
 uvicorn==0.40.0
+sqladmin==0.20.1

@@ -108,6 +108,9 @@ class ProductModel(Base):
 
     category = relationship("CategoryModel", back_populates="products")
 
+    def __str__(self) -> str:
+        return self.title
+
 
 class CategoryModel(Base):
     """
@@ -133,6 +136,9 @@ class CategoryModel(Base):
     attribute_definitions = relationship(
         "AttributeModel", back_populates="category", cascade="all, delete-orphan"
     )
+
+    def __str__(self) -> str:
+        return self.title
 
 
 class AttributeModel(Base):
