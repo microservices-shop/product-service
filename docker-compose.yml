@@ -19,23 +19,6 @@ services:
     networks:
       - product_network
 
-  # Redis для кэширования
-  redis:
-    image: redis:8.0.2
-    container_name: product_redis
-    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - product_network
-
   # Миграции базы данных
   migrator:
     build: .
@@ -65,14 +48,8 @@ services:
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       DB_NAME: ${DB_NAME}
-      REDIS_HOST: redis
-      REDIS_PORT: 6379
-      REDIS_PASSWORD: ${REDIS_PASSWORD}
-      REDIS_DB: 0
     depends_on:
       db:
-        condition: service_healthy
-      redis:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
@@ -81,7 +58,6 @@ services:
 
 volumes:
   postgres_data:
-  redis_data:
 
 networks:
   product_network:

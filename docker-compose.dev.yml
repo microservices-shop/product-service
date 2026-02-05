@@ -28,25 +28,5 @@ services:
       db:
         condition: service_healthy
 
-  redis:
-    image: redis:8.0.2
-    container_name: redis_dev
-    env_file:
-      - .env
-    command:
-      - redis-server
-      - "--appendonly yes"
-      - "--requirepass ${REDIS_PASSWORD}"
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_dev_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
 volumes:
   db_data:
-  redis_dev_data:

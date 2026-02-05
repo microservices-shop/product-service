@@ -24,20 +24,6 @@ class Settings(BaseSettings):
         )
         return url
 
-    REDIS_HOST: str = ""
-    REDIS_PORT: str = ""
-    REDIS_PASSWORD: str = ""
-    REDIS_DB: str = "0"
-
-    @property
-    def REDIS_URL(self) -> str:
-        url = (
-            f"redis://:{self.REDIS_PASSWORD}@"
-            f"{self.REDIS_HOST}:{self.REDIS_PORT}"
-            f"/{self.REDIS_DB}"
-        )
-        return url
-
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str | None = None
     LOG_ROTATION: str = "10 MB"
