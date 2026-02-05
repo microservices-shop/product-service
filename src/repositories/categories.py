@@ -1,5 +1,6 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 from src.db.models import CategoryModel
 from src.schemas.categories import CategoryCreateSchema, CategoryUpdateSchema
@@ -25,6 +26,19 @@ class CategoryRepository:
     ) -> CategoryModel | None:
         """Получить категорию по её ID"""
         query = select(CategoryModel).where(CategoryModel.id == category_id)
+        result = await session.execute(query)
+        return result.scalar_one_or_none()
+
+    @staticmethod
+    async def get_with_attributes(
+        session: AsyncSession, category_id: int
+    ) -> CategoryModel | None:
+        """Получить категорию с загруженными атрибутами"""
+        query = (
+            select(CategoryModel)
+            .where(CategoryModel.id == category_id)
+            .options(selectinload(CategoryModel.attribute_definitions))
+        )
         result = await session.execute(query)
         return result.scalar_one_or_none()
 

@@ -41,7 +41,7 @@ services:
     build: .
     container_name: product_app
     ports:
-      - "8000:8000"
+      - "8002:8002"
     environment:
       DB_HOST: db
       DB_PORT: 5432

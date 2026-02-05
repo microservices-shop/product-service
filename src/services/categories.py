@@ -97,3 +97,12 @@ class CategoryService:
 
         await CategoryRepository.delete(self.session, category)
         await self.session.commit()
+
+    async def get_attributes(self, category_id: int):
+        """Получить список атрибутов для категории"""
+        category = await CategoryRepository.get_with_attributes(
+            self.session, category_id
+        )
+        if not category:
+            raise NotFoundException(f"Категория с ID '{category_id}' не найдена")
+        return category.attribute_definitions

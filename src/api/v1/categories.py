@@ -1,6 +1,7 @@
 from fastapi import APIRouter, status
 
 from src.api.dependencies import CategoryServiceDep
+from src.schemas.attributes import AttributeResponseSchema
 from src.schemas.categories import (
     CategoryCreateSchema,
     CategoryUpdateSchema,
@@ -55,6 +56,20 @@ async def get_all_categories(
 ) -> list[CategoryResponseSchema]:
     """Получить список всех категорий"""
     return await service.get_all()
+
+
+@router.get(
+    "/{category_id}/attributes",
+    response_model=list[AttributeResponseSchema],
+    summary="Получить атрибуты категории",
+    description="Возвращает список определений атрибутов для указанной категории.",
+)
+async def get_category_attributes(
+    category_id: int,
+    service: CategoryServiceDep,
+):
+    """Получить список атрибутов для категории"""
+    return await service.get_attributes(category_id)
 
 
 @router.patch(
