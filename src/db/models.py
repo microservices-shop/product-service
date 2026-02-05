@@ -14,7 +14,6 @@ from sqlalchemy import (
     DateTime,
     Text,
     ForeignKey,
-    Float,
     func,
     UniqueConstraint,
     Index,
@@ -34,7 +33,6 @@ class ProductModel(Base):
         description: str - описание товара (опционально)
         images: list[str] - список URL изображений товара
         stock: int - количество товара в наличии
-        rating: float - рейтинг товара (0-5)
         status: ProductStatus - статус товара (active/archived), по умолчанию active
         attributes: dict - динамические атрибуты товара в формате JSONB
         created_at: datetime - дата и время создания записи
@@ -75,12 +73,6 @@ class ProductModel(Base):
         nullable=False,
         server_default=text("0"),
         doc="Количество товара в наличии",
-    )
-    rating: Mapped[float] = mapped_column(
-        Float,
-        nullable=False,
-        server_default=text("0.0"),
-        doc="Рейтинг товара (0-5)",
     )
     status: Mapped[ProductStatus] = mapped_column(
         SAEnum(ProductStatus, name="product_status"),

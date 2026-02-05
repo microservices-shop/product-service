@@ -14,7 +14,6 @@ class ProductAdmin(ModelView, model=ProductModel):
         ProductModel.title,
         ProductModel.price,
         ProductModel.stock,
-        ProductModel.rating,
         ProductModel.status,
         ProductModel.category,
     ]
@@ -25,7 +24,6 @@ class ProductAdmin(ModelView, model=ProductModel):
         ProductModel.title,
         ProductModel.price,
         ProductModel.stock,
-        ProductModel.rating,
         ProductModel.created_at,
     ]
 
@@ -41,7 +39,6 @@ class ProductAdmin(ModelView, model=ProductModel):
         ProductModel.description,
         ProductModel.images,
         ProductModel.stock,
-        ProductModel.rating,
         ProductModel.status,
         ProductModel.attributes,
     ]
@@ -49,8 +46,22 @@ class ProductAdmin(ModelView, model=ProductModel):
     # Подсказки для полей
     form_args = {
         "price": {"description": "Цена в копейках (135000 руб = 13500000)"},
-        "rating": {"description": "Рейтинг от 0 до 5"},
         "stock": {"description": "Количество на складе"},
+        "attributes": {
+            "description": (
+                'JSON формат: {"Ключ": "Значение", ...}\n'
+                "Примеры:\n"
+                '• Смартфоны: {"Экран": "6.7 OLED", "Процессор": "A17 Pro", "Память": "256ГБ"}\n'
+                '• Ноутбуки: {"Процессор": "M3", "ОЗУ": "16ГБ", "Накопитель": "512ГБ SSD"}\n'
+                '• Наушники: {"Тип": "Полноразмерные", "Шумоподавление": "Да", "Батарея": "30ч"}'
+            )
+        },
+        "images": {
+            "description": (
+                "Список URL изображений через запятую.\n"
+                'Пример: ["https://example.com/img1.jpg", "https://example.com/img2.jpg"]'
+            )
+        },
     }
 
     can_create = True
