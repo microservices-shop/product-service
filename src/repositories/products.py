@@ -11,6 +11,27 @@ class ProductRepository:
     """CRUD операции над товарами"""
 
     @staticmethod
+    def _build_filters(
+        search: str | None = None,
+        category_id: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
+    ) -> list:
+        """Построить список условий WHERE для фильтрации товаров."""
+        conditions = []
+
+        if search:
+            conditions.append(ProductModel.title.ilike(f"%{search}%"))
+        if category_id is not None:
+            conditions.append(ProductModel.category_id == category_id)
+        if price_min is not None:
+            conditions.append(ProductModel.price >= price_min)
+        if price_max is not None:
+            conditions.append(ProductModel.price <= price_max)
+
+        return conditions
+
+    @staticmethod
     async def create(
         session: AsyncSession, product_data: ProductCreateSchema
     ) -> ProductModel:
@@ -59,14 +80,25 @@ class ProductRepository:
         offset: int = 0,
         sort_by: str = "id",
         sort_order: str = "asc",
+        search: str | None = None,
+        category_id: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
     ) -> list[ProductModel]:
-        """Получить список всех товаров с сортировкой"""
-        # Определяем колонку для сортировки
+        """Получить список товаров с сортировкой и фильтрацией."""
         sort_column = getattr(ProductModel, sort_by, ProductModel.id)
         order_func = desc if sort_order == "desc" else asc
 
+        conditions = ProductRepository._build_filters(
+            search=search,
+            category_id=category_id,
+            price_min=price_min,
+            price_max=price_max,
+        )
+
         query = (
             select(ProductModel)
+            .where(*conditions)
             .order_by(order_func(sort_column))
             .limit(limit)
             .offset(offset)
@@ -92,9 +124,22 @@ class ProductRepository:
         return list(result.scalars().all())
 
     @staticmethod
-    async def count_all(session: AsyncSession) -> int:
-        """Подсчитать общее количество всех товаров (независимо от статуса)."""
-        query = select(func.count(ProductModel.id))
+    async def count_filtered(
+        session: AsyncSession,
+        search: str | None = None,
+        category_id: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
+    ) -> int:
+        """Подсчитать количество товаров с учётом фильтров."""
+        conditions = ProductRepository._build_filters(
+            search=search,
+            category_id=category_id,
+            price_min=price_min,
+            price_max=price_max,
+        )
+
+        query = select(func.count(ProductModel.id)).where(*conditions)
         result = await session.execute(query)
         return result.scalar_one()
 

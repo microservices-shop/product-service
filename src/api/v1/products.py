@@ -1,6 +1,6 @@
 from typing import Literal
 
-from fastapi import APIRouter, Query, status
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
 
 from src.api.dependencies import ProductServiceDep
 from src.config import settings
@@ -16,11 +16,29 @@ from src.schemas.common import PaginationParams
 router = APIRouter(prefix="/products", tags=["Products"])
 
 
+async def _require_admin(
+    x_user_role: str | None = Header(default=None, alias="X-User-Role"),
+) -> str:
+    """
+    Проверяет роль администратора из заголовка X-User-Role.
+
+    Если заголовок отсутствует — доступ разрешён
+    (обратная совместимость до внедрения API Gateway).
+    Если указана роль, отличная от admin — 403.
+    """
+    if x_user_role is not None and x_user_role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ запрещён. Требуется роль администратора.",
+        )
+    return x_user_role or "anonymous"
+
+
 @router.get(
     "",
     response_model=ProductListResponse,
     summary="Получить список товаров",
-    description="Возвращает пагинированный список всех активных товаров для каталога.",
+    description="Возвращает пагинированный список товаров с фильтрацией и сортировкой.",
 )
 async def get_products(
     service: ProductServiceDep,
@@ -39,12 +57,40 @@ async def get_products(
         default="asc",
         description="Порядок сортировки (asc - по возрастанию, desc - по убыванию)",
     ),
+    search: str | None = Query(
+        default=None,
+        max_length=255,
+        description="Поиск по названию товара (частичное совпадение, без учёта регистра)",
+    ),
+    category_id: int | None = Query(
+        default=None,
+        gt=0,
+        description="Фильтрация по ID категории",
+    ),
+    price_min: int | None = Query(
+        default=None,
+        ge=0,
+        description="Минимальная цена (в копейках)",
+    ),
+    price_max: int | None = Query(
+        default=None,
+        ge=0,
+        description="Максимальная цена (в копейках)",
+    ),
 ) -> ProductListResponse:
     """
-    Получить список товаров с пагинацией и сортировкой
+    Получить список товаров с пагинацией, сортировкой и фильтрацией
     """
     pagination = PaginationParams(page=page, page_size=page_size)
-    return await service.get_all(pagination, sort_by=sort_by, sort_order=sort_order)
+    return await service.get_all(
+        pagination,
+        sort_by=sort_by,
+        sort_order=sort_order,
+        search=search,
+        category_id=category_id,
+        price_min=price_min,
+        price_max=price_max,
+    )
 
 
 @router.get(
@@ -71,6 +117,7 @@ async def get_product(
     response_model=ProductResponseSchema,
     summary="Создать товар",
     description="Создаёт новый товар в каталоге.",
+    dependencies=[Depends(_require_admin)],
 )
 async def create_product(
     data: ProductCreateSchema,
@@ -89,6 +136,7 @@ async def create_product(
     response_model=ProductResponseSchema,
     summary="Обновить товар",
     description="Частичное обновление информации о товаре.",
+    dependencies=[Depends(_require_admin)],
 )
 async def update_product(
     product_id: int,
@@ -104,7 +152,10 @@ async def update_product(
 
 
 @router.delete(
-    "/{product_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Удалить товар"
+    "/{product_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    summary="Удалить товар",
+    dependencies=[Depends(_require_admin)],
 )
 async def delete_product(
     product_id: int,

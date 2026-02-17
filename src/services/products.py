@@ -147,10 +147,23 @@ class ProductService:
         return await ProductRepository.get_all_from_category(self.session, category_id)
 
     async def get_all(
-        self, pagination: PaginationParams, sort_by: str = "id", sort_order: str = "asc"
+        self,
+        pagination: PaginationParams,
+        sort_by: str = "id",
+        sort_order: str = "asc",
+        search: str | None = None,
+        category_id: int | None = None,
+        price_min: int | None = None,
+        price_max: int | None = None,
     ) -> ProductListResponse:
-        """Получить список всех товаров с пагинацией и сортировкой."""
-        total = await ProductRepository.count_all(self.session)
+        """Получить список всех товаров с пагинацией, сортировкой и фильтрацией."""
+        total = await ProductRepository.count_filtered(
+            self.session,
+            search=search,
+            category_id=category_id,
+            price_min=price_min,
+            price_max=price_max,
+        )
 
         # Вычисляем offset
         offset = (pagination.page - 1) * pagination.page_size
@@ -161,6 +174,10 @@ class ProductService:
             offset=offset,
             sort_by=sort_by,
             sort_order=sort_order,
+            search=search,
+            category_id=category_id,
+            price_min=price_min,
+            price_max=price_max,
         )
 
         # Вычисляем количество страниц
