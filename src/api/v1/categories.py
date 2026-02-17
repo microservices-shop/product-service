@@ -1,4 +1,4 @@
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from src.api.dependencies import CategoryServiceDep
 from src.schemas.attributes import AttributeResponseSchema
@@ -11,12 +11,25 @@ from src.schemas.categories import (
 router = APIRouter(prefix="/categories", tags=["Categories"])
 
 
+async def _require_admin(
+    x_user_role: str | None = Header(default=None, alias="X-User-Role"),
+) -> str:
+    """Проверяет роль администратора из заголовка X-User-Role."""
+    if x_user_role is not None and x_user_role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Доступ запрещён. Требуется роль администратора.",
+        )
+    return x_user_role or "anonymous"
+
+
 @router.post(
     "",
     status_code=status.HTTP_201_CREATED,
     response_model=CategoryResponseSchema,
     summary="Создать категорию",
     description="Создаёт новую категорию товаров.",
+    dependencies=[Depends(_require_admin)],
 )
 async def create_category(
     data: CategoryCreateSchema,
@@ -77,6 +90,7 @@ async def get_category_attributes(
     response_model=CategoryResponseSchema,
     summary="Обновить категорию",
     description="Частичное обновление информации о категории. Можно передать только те поля, которые нужно изменить.",
+    dependencies=[Depends(_require_admin)],
 )
 async def update_category(
     category_id: int,
@@ -95,6 +109,7 @@ async def update_category(
     "/{category_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Удалить категорию",
+    dependencies=[Depends(_require_admin)],
 )
 async def delete_category(
     category_id: int,

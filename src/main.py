@@ -89,6 +89,11 @@ def create_app() -> FastAPI:
     # Подключение роутеров
     app.include_router(api_router)
 
+    # Подключение internal API (межсервисное взаимодействие)
+    from src.api.internal.router import internal_router
+
+    app.include_router(internal_router)
+
     # Подключение админ-панели SQLAdmin
     setup_admin(app, engine)
 
