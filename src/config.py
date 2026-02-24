@@ -43,5 +43,8 @@ class Settings(BaseSettings):
     DEFAULT_PAGE_SIZE: int = 20
     MAX_PAGE_SIZE: int = 1000
 
+    # Cart Service webhook URL (пустая строка = webhook'и не отправляются)
+    CART_SERVICE_URL: str = ""
+
 
 settings = Settings()

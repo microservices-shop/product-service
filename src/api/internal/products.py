@@ -8,6 +8,7 @@ from src.schemas.internal import (
 )
 from src.schemas.products import ProductResponseSchema
 from src.repositories.products import ProductRepository
+from src.services.cart_webhook import CartWebhookClient
 
 router = APIRouter(prefix="/products", tags=["Internal — Products"])
 
@@ -68,6 +69,13 @@ async def reserve_products(
         reserved.append(ReserveItemSchema(product_id=product.id, quantity=quantity))
 
     await session.commit()
+
+    # Webhook: уведомить Cart Service о товарах, которые закончились (stock стал 0)
+    cart_webhook = CartWebhookClient()
+    for product, quantity in products_to_reserve:
+        if product.stock == 0:
+            await cart_webhook.notify_out_of_stock(product.id)
+
     return ReserveResponseSchema(success=True, reserved_items=reserved)
 
 
@@ -103,6 +111,7 @@ async def cancel_reserve(
     """
     restored = []
     errors = []
+    was_out_of_stock = []  # Товары, у которых stock был 0 до отмены резерва
 
     for item in data.items:
         product = await ProductRepository.get_by_id(
@@ -112,12 +121,22 @@ async def cancel_reserve(
             errors.append(f"Товар с ID {item.product_id} не найден")
             continue
 
+        # Запоминаем, если товар был out-of-stock до восстановления
+        if product.stock == 0:
+            was_out_of_stock.append(product.id)
+
         product.stock += item.quantity
         restored.append(
             ReserveItemSchema(product_id=product.id, quantity=item.quantity)
         )
 
     await session.commit()
+
+    # Webhook: уведомить Cart Service о товарах, которые снова в наличии
+    cart_webhook = CartWebhookClient()
+    for product_id in was_out_of_stock:
+        await cart_webhook.notify_back_in_stock(product_id)
+
     return ReserveResponseSchema(
         success=len(errors) == 0,
         reserved_items=restored,

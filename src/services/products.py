@@ -16,11 +16,13 @@ from src.schemas.products import (
     ProductUpdateSchema,
     ProductListResponse,
 )
+from src.services.cart_webhook import CartWebhookClient
 
 
 class ProductService:
     def __init__(self, session: AsyncSession):
         self.session = session
+        self._cart_webhook = CartWebhookClient()
 
     async def _validate_product_attributes(
         self, category_id: int, attributes: dict[str, Any]
@@ -220,6 +222,12 @@ class ProductService:
         if not product:
             raise NotFoundException(f"Товар с ID {product_id} не найден")
 
+        # Запоминаем старые значения ДО обновления (для webhook'ов)
+        old_title = product.title
+        old_price = product.price
+        old_images = list(product.images) if product.images else []
+        old_stock = product.stock
+
         # Определяем category_id для валидации атрибутов
         target_category_id = data.category_id or product.category_id
 
@@ -239,6 +247,29 @@ class ProductService:
         await self.session.commit()
         await self.session.refresh(updated)
 
+        # --- Отправка webhook'ов ПОСЛЕ успешного коммита ---
+
+        # Если изменился title, price или images → notify_product_updated
+        if (
+            updated.title != old_title
+            or updated.price != old_price
+            or list(updated.images or []) != old_images
+        ):
+            await self._cart_webhook.notify_product_updated(
+                product_id=product_id,
+                title=updated.title,
+                price=updated.price,
+                image_url=updated.images[0] if updated.images else None,
+            )
+
+        # Если stock стал 0 (и раньше был > 0) → out_of_stock
+        if updated.stock == 0 and old_stock > 0:
+            await self._cart_webhook.notify_out_of_stock(product_id)
+
+        # Если stock стал > 0 (и раньше был 0) → back_in_stock
+        if updated.stock > 0 and old_stock == 0:
+            await self._cart_webhook.notify_back_in_stock(product_id)
+
         return updated
 
     async def delete(self, product_id: int) -> None:
@@ -252,3 +283,6 @@ class ProductService:
 
         await ProductRepository.delete(self.session, product)
         await self.session.commit()
+
+        # Webhook ПОСЛЕ успешного коммита
+        await self._cart_webhook.notify_product_deleted(product_id)
