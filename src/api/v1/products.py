@@ -1,7 +1,8 @@
 from typing import Literal
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Query, status
+from fastapi import APIRouter, Depends, Query, status
 
+from src.api.auth import require_admin
 from src.api.dependencies import ProductServiceDep
 from src.config import settings
 from src.schemas.products import (
@@ -14,24 +15,6 @@ from src.schemas.products import (
 from src.schemas.common import PaginationParams
 
 router = APIRouter(prefix="/products", tags=["Products"])
-
-
-async def _require_admin(
-    x_user_role: str | None = Header(default=None, alias="X-User-Role"),
-) -> str:
-    """
-    Проверяет роль администратора из заголовка X-User-Role.
-
-    Если заголовок отсутствует — доступ разрешён
-    (обратная совместимость до внедрения API Gateway).
-    Если указана роль, отличная от admin — 403.
-    """
-    if x_user_role is not None and x_user_role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Доступ запрещён. Требуется роль администратора.",
-        )
-    return x_user_role or "anonymous"
 
 
 @router.get(
@@ -117,7 +100,7 @@ async def get_product(
     response_model=ProductResponseSchema,
     summary="Создать товар",
     description="Создаёт новый товар в каталоге.",
-    dependencies=[Depends(_require_admin)],
+    dependencies=[Depends(require_admin)],
 )
 async def create_product(
     data: ProductCreateSchema,
@@ -136,7 +119,7 @@ async def create_product(
     response_model=ProductResponseSchema,
     summary="Обновить товар",
     description="Частичное обновление информации о товаре.",
-    dependencies=[Depends(_require_admin)],
+    dependencies=[Depends(require_admin)],
 )
 async def update_product(
     product_id: int,
@@ -155,7 +138,7 @@ async def update_product(
     "/{product_id}",
     status_code=status.HTTP_204_NO_CONTENT,
     summary="Удалить товар",
-    dependencies=[Depends(_require_admin)],
+    dependencies=[Depends(require_admin)],
 )
 async def delete_product(
     product_id: int,

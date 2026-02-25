@@ -11,6 +11,11 @@ from src.repositories.categories import CategoryRepository
 from src.repositories.products import ProductRepository
 from src.repositories.attributes import AttributeRepository
 from src.schemas.common import PaginationParams
+from src.schemas.internal import (
+    ReserveRequestSchema,
+    ReserveResponseSchema,
+    ReserveItemSchema,
+)
 from src.schemas.products import (
     ProductCreateSchema,
     ProductUpdateSchema,
@@ -286,3 +291,93 @@ class ProductService:
 
         # Webhook ПОСЛЕ успешного коммита
         await self._cart_webhook.notify_product_deleted(product_id)
+
+    async def reserve(self, data: ReserveRequestSchema) -> ReserveResponseSchema:
+        """
+        Резервирование товаров (уменьшение stock).
+
+        Используется Order Service при оформлении заказа.
+        Если хотя бы один товар не может быть зарезервирован,
+        ни один товар не резервируется (атомарная операция).
+        """
+        errors = []
+        products_to_reserve = []
+
+        for item in data.items:
+            product = await ProductRepository.get_by_id(
+                self.session, item.product_id, with_category=False
+            )
+            if not product:
+                errors.append(f"Товар с ID {item.product_id} не найден")
+                continue
+            if product.stock < item.quantity:
+                errors.append(
+                    f"Недостаточно товара '{product.title}' "
+                    f"(запрошено: {item.quantity}, в наличии: {product.stock})"
+                )
+                continue
+            products_to_reserve.append((product, item.quantity))
+
+        if errors:
+            return ReserveResponseSchema(success=False, errors=errors)
+
+        reserved = []
+        for product, quantity in products_to_reserve:
+            product.stock -= quantity
+            reserved.append(ReserveItemSchema(product_id=product.id, quantity=quantity))
+
+        await self.session.commit()
+
+        # Webhook: уведомить Cart Service о товарах, которые закончились (stock стал 0)
+        for product, quantity in products_to_reserve:
+            if product.stock == 0:
+                await self._cart_webhook.notify_out_of_stock(product.id)
+
+        return ReserveResponseSchema(success=True, reserved_items=reserved)
+
+    async def confirm_reserve(self, data: ReserveRequestSchema) -> dict:
+        """
+        Подтверждение резерва.
+
+        Stock уже был уменьшен при резервировании.
+        """
+        return {"status": "confirmed", "items_count": len(data.items)}
+
+    async def cancel_reserve(self, data: ReserveRequestSchema) -> ReserveResponseSchema:
+        """
+        Отмена резерва.
+
+        Вызывается при ошибке после успешного резервирования.
+        """
+        restored = []
+        errors = []
+        was_out_of_stock = []
+
+        for item in data.items:
+            product = await ProductRepository.get_by_id(
+                self.session, item.product_id, with_category=False
+            )
+            if not product:
+                errors.append(f"Товар с ID {item.product_id} не найден")
+                continue
+
+            # Запоминаем, если товар был out-of-stock до восстановления
+            if product.stock == 0:
+                was_out_of_stock.append(product.id)
+
+            product.stock += item.quantity
+            restored.append(
+                ReserveItemSchema(product_id=product.id, quantity=item.quantity)
+            )
+
+        await self.session.commit()
+
+        # Webhook: уведомить Cart Service о товарах, которые снова в наличии
+        for product_id in was_out_of_stock:
+            await self._cart_webhook.notify_back_in_stock(product_id)
+
+        return ReserveResponseSchema(
+            success=len(errors) == 0,
+            reserved_items=restored,
+            errors=errors,
+        )
