@@ -1,5 +1,4 @@
 services:
-  # PostgreSQL база данных
   db:
     image: postgres:18
     container_name: product_db
@@ -12,20 +11,19 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      test: [ "CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}" ]
       interval: 5s
       timeout: 5s
       retries: 5
     networks:
-      - product_network
+      - shop_network
 
-  # Миграции базы данных
   migrator:
     build: .
     container_name: product_migrator
     command: alembic upgrade head
     environment:
-      DB_HOST: db
+      DB_HOST: product_db
       DB_PORT: 5432
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
@@ -34,31 +32,32 @@ services:
       db:
         condition: service_healthy
     networks:
-      - product_network
+      - shop_network
 
-  # Основное приложение
   app:
     build: .
     container_name: product_app
     ports:
       - "8002:8002"
     environment:
-      DB_HOST: db
+      DB_HOST: product_db
       DB_PORT: 5432
       DB_USER: ${DB_USER}
       DB_PASS: ${DB_PASS}
       DB_NAME: ${DB_NAME}
+      CART_SERVICE_URL: http://cart_app:8003
     depends_on:
       db:
         condition: service_healthy
       migrator:
         condition: service_completed_successfully
     networks:
-      - product_network
+      - shop_network
 
 volumes:
   postgres_data:
 
+
 networks:
-  product_network:
-    driver: bridge
+  shop_network:
+    external: true

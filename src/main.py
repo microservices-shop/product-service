@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from src.api.v1.router import api_router
+from src.api.internal.router import internal_router
 from src.config import settings
 from src.db.database import engine
 from src.admin import setup_admin
@@ -86,16 +87,15 @@ def create_app() -> FastAPI:
             },
         )
 
-    # Подключение роутеров
     app.include_router(api_router)
-
-    # Подключение internal API (межсервисное взаимодействие)
-    from src.api.internal.router import internal_router
-
     app.include_router(internal_router)
 
     # Подключение админ-панели SQLAdmin
     setup_admin(app, engine)
+
+    @app.get("/health", tags=["System"])
+    async def health_check():
+        return {"status": "healthy", "service": "product-service"}
 
     return app
 

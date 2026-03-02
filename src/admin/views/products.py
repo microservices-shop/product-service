@@ -1,5 +1,8 @@
+from typing import Any
+from starlette.requests import Request
 from sqladmin import ModelView
 from src.db.models import ProductModel
+from src.services.cart_webhook import CartWebhookClient
 
 
 class ProductAdmin(ModelView, model=ProductModel):
@@ -68,3 +71,23 @@ class ProductAdmin(ModelView, model=ProductModel):
     can_edit = True
     can_delete = True
     can_view_details = True
+
+    async def after_model_change(
+        self, data: dict, model: Any, is_created: bool, request: Request
+    ) -> None:
+        if not is_created:
+            client = CartWebhookClient()
+            await client.notify_product_updated(
+                product_id=model.id,
+                title=model.title,
+                price=model.price,
+                image_url=model.images[0] if model.images else None,
+            )
+            if model.stock == 0:
+                await client.notify_out_of_stock(product_id=model.id)
+            else:
+                await client.notify_back_in_stock(product_id=model.id)
+
+    async def after_model_delete(self, model: Any, request: Request) -> None:
+        client = CartWebhookClient()
+        await client.notify_product_deleted(product_id=model.id)
