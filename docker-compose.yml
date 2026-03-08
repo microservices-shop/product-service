@@ -46,6 +46,10 @@ services:
       DB_PASS: ${DB_PASS}
       DB_NAME: ${DB_NAME}
       CART_SERVICE_URL: http://cart_app:8003
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
+      AUTH_SERVICE_URL: http://auth_app:8001
     depends_on:
       db:
         condition: service_healthy

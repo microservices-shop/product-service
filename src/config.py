@@ -46,5 +46,11 @@ class Settings(BaseSettings):
     # Cart Service webhook URL (пустая строка = webhook'и не отправляются)
     CART_SERVICE_URL: str = ""
 
+    # SQLAdmin OAuth Authentication
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+    SESSION_SECRET_KEY: str = ""
+    AUTH_SERVICE_URL: str = "http://localhost:8001"
+
 
 settings = Settings()

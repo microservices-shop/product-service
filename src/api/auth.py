@@ -7,13 +7,12 @@ async def require_admin(
     """
     Проверяет роль администратора из заголовка X-User-Role.
 
-    Если заголовок отсутствует — доступ разрешён
-    (обратная совместимость до внедрения API Gateway).
-    Если указана роль, отличная от admin — 403.
+    Заголовок X-User-Role устанавливается API Gateway при проксировании.
+    Если заголовок отсутствует или роль не admin — 403.
     """
-    if x_user_role is not None and x_user_role != "admin":
+    if x_user_role is None or x_user_role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Доступ запрещён. Требуется роль администратора.",
         )
-    return x_user_role or "anonymous"
+    return x_user_role
