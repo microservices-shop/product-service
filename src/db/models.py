@@ -18,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Index,
     CheckConstraint,
+    UUID,
 )
 
 
@@ -187,3 +188,47 @@ class AttributeModel(Base):
     )
 
     category = relationship("CategoryModel", back_populates="attribute_definitions")
+
+
+class ReservationModel(Base):
+    """
+    Модель резерва товара под заказ.
+
+    Поля:
+        id: int - первичный ключ
+        order_id: UUID - ID заказа в Order Service (с индексом)
+        product_id: int - FK на товар
+        quantity: int - количество зарезервированного товара
+        created_at: datetime - когда был создан резерв
+    """
+
+    __tablename__ = "reservations"
+
+    id: Mapped[int] = mapped_column(primary_key=True, doc="PK резерва")
+    order_id: Mapped[str] = mapped_column(
+        UUID(as_uuid=True),
+        nullable=False,
+        index=True,
+        doc="ID заказа",
+    )
+    product_id: Mapped[int] = mapped_column(
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+        doc="FK на товар",
+    )
+    quantity: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+        doc="Количество товара в резерве",
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
+        doc="Дата и время создания записи",
+    )
+
+    product = relationship("ProductModel", backref="reservations")
+
+    def __str__(self) -> str:
+        return f"Reservation(order_id={self.order_id}, product_id={self.product_id}, qty={self.quantity})"
