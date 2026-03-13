@@ -6,6 +6,7 @@ from src.db.database import session_factory
 from src.services.categories import CategoryService
 from src.services.products import ProductService
 from src.services.attributes import AttributeService
+from src.services.reservations import ReservationService
 
 
 async def get_db() -> AsyncSession:
@@ -39,3 +40,11 @@ async def get_attribute_service(session: SessionDep) -> AttributeService:
 
 
 AttributeServiceDep = Annotated[AttributeService, Depends(get_attribute_service)]
+
+
+async def get_reservation_service(session: SessionDep) -> ReservationService:
+    """Фабрика для создания сервиса резервов."""
+    return ReservationService(session)
+
+
+ReservationServiceDep = Annotated[ReservationService, Depends(get_reservation_service)]
