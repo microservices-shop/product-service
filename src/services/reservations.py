@@ -50,6 +50,7 @@ class ReservationService:
                     name=product.title,
                     price=product.price,
                     quantity=quantity,
+                    image_url=product.images[0] if product.images else "",
                 )
             )
 

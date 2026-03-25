@@ -25,6 +25,7 @@ class ReservedProductSchema(BaseModel):
     name: str = Field(..., description="Название товара")
     price: int = Field(..., description="Цена товара в копейках")
     quantity: int = Field(..., description="Количество зарезервированного товара")
+    image_url: str = Field(..., description="URL первого фото товара")
 
 
 class ReserveResponseSchema(BaseModel):
