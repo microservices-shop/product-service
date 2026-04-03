@@ -2,6 +2,8 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from src.messaging import consumers  # noqa: F401 — регистрирует @subscriber
+from src.messaging.broker import broker
 from starlette.middleware.sessions import SessionMiddleware
 
 from src.api.v1.router import api_router
@@ -23,7 +25,11 @@ from src.logging import logger
 async def lifespan(app: FastAPI):
     """Управление жизненным циклом приложения"""
     logger.info("Сервис 'Каталог товаров' запускается...")
+    broker.include_router(consumers.router)
+    await broker.connect()
+    await broker.start()
     yield
+    await broker.close()
     logger.info("Сервис 'Каталог товаров' останавливается...")
 
 

@@ -46,6 +46,9 @@ class Settings(BaseSettings):
     # Cart Service webhook URL (пустая строка = webhook'и не отправляются)
     CART_SERVICE_URL: str = ""
 
+    # RabbitMQ
+    RABBITMQ_URL: str = "amqp://guest:guest@localhost:5672/"
+
     # SQLAdmin OAuth Authentication
     GOOGLE_CLIENT_ID: str = ""
     GOOGLE_CLIENT_SECRET: str = ""
