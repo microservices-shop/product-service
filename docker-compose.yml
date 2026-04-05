@@ -50,6 +50,7 @@ services:
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
       SESSION_SECRET_KEY: ${SESSION_SECRET_KEY}
       AUTH_SERVICE_URL: http://auth_app:8001
+      RABBITMQ_URL: ampq://guest:guest@rabbitmq:5672/
     depends_on:
       db:
         condition: service_healthy
