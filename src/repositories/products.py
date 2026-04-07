@@ -44,13 +44,19 @@ class ProductRepository:
 
     @staticmethod
     async def get_by_id(
-        session: AsyncSession, product_id: int, with_category: bool = True
+        session: AsyncSession,
+        product_id: int,
+        with_category: bool = True,
+        for_update: bool = False,
     ) -> ProductModel | None:
         """Получить товар по ID."""
         query = select(ProductModel).where(ProductModel.id == product_id)
 
         if with_category:
             query = query.options(selectinload(ProductModel.category))
+
+        if for_update:
+            query = query.with_for_update()
 
         result = await session.execute(query)
         return result.scalar_one_or_none()

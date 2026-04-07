@@ -23,7 +23,7 @@ class ReservationService:
 
         for item in data.items:
             product = await ProductRepository.get_by_id(
-                self.session, item.product_id, with_category=False
+                self.session, item.product_id, with_category=False, for_update=True
             )
             if not product:
                 raise BadRequestException(f"Товар с ID {item.product_id} не найден")
@@ -78,7 +78,10 @@ class ReservationService:
 
         for reservation in reservations:
             product = await ProductRepository.get_by_id(
-                self.session, reservation.product_id, with_category=False
+                self.session,
+                reservation.product_id,
+                with_category=False,
+                for_update=True,
             )
             if product:
                 if product.stock == 0:
