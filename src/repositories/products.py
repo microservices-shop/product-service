@@ -1,4 +1,4 @@
-from sqlalchemy import select, func, asc, desc
+from sqlalchemy import select, func, asc, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -94,6 +94,10 @@ class ProductRepository:
         """Получить список товаров с сортировкой и фильтрацией."""
         sort_column = getattr(ProductModel, sort_by, ProductModel.id)
         order_func = desc if sort_order == "desc" else asc
+        out_of_stock_flag = case(
+            (ProductModel.stock == 0, 1),
+            else_=0,
+        )
 
         conditions = ProductRepository._build_filters(
             search=search,
@@ -105,7 +109,7 @@ class ProductRepository:
         query = (
             select(ProductModel)
             .where(*conditions)
-            .order_by(order_func(sort_column))
+            .order_by(asc(out_of_stock_flag), order_func(sort_column))
             .limit(limit)
             .offset(offset)
         )
