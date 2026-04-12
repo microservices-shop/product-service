@@ -9,9 +9,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from src.api.v1.router import api_router
 from src.api.internal.router import internal_router
 from src.config import settings
-from src.db.database import engine
-from src.admin import setup_admin
-from src.admin.admin_auth import admin_oauth_callback, AdminOAuthRedirectMiddleware
 from src.exceptions import (
     NotFoundException,
     BadRequestException,
@@ -41,9 +38,6 @@ def create_app() -> FastAPI:
         description="API для управления товарами и категориями",
         lifespan=lifespan,
     )
-
-    # Middleware для перехвата /admin/login → redirect на Google OAuth
-    app.add_middleware(AdminOAuthRedirectMiddleware)
 
     # Session middleware (для OAuth state и admin сессий)
     app.add_middleware(
@@ -106,17 +100,6 @@ def create_app() -> FastAPI:
 
     app.include_router(api_router)
     app.include_router(internal_router)
-
-    # Подключение админ-панели SQLAdmin
-    setup_admin(app, engine)
-
-    # OAuth callback для SQLAdmin
-    app.add_route(
-        "/oauth/admin/callback",
-        admin_oauth_callback,
-        methods=["GET"],
-        name="admin_oauth_callback",
-    )
 
     @app.get("/health", tags=["System"])
     async def health_check():
