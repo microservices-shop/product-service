@@ -1,0 +1,18 @@
+# Тестовая PostgreSQL БД для интеграционных тестов
+# Запуск: docker compose -f docker-compose.test.yml up -d
+
+services:
+  db_test:
+    image: postgres:16
+    container_name: product_db_test
+    environment:
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_pass
+      POSTGRES_DB: product_test_db
+    ports:
+      - "5434:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d product_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
